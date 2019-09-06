@@ -9,15 +9,14 @@ namespace mutils{
     
     copy_ptr():t(new T()){}
     
-    template<typename... Args>
-    copy_ptr(Args&&... args):t(new t(std::forward<Args>(args)...)){}
-    
-    copy_ptr(const copy_ptr& t):t(new T(*t)){}
+    copy_ptr(const copy_ptr& t):t(t->clone()){}
 
     template<typename U>
-    copy_ptr(const copy_ptr<U>& u):t(new U(*u)){
+    copy_ptr(const copy_ptr<U>& u):t(u->clone()){
       static_assert(std::is_base_of_v<T,U>);
     }
+
+    copy_ptr(const T& t):t(t.clone()){}
 
     copy_ptr(copy_ptr&&) = default;
 

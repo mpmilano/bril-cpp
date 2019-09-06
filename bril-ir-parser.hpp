@@ -16,12 +16,12 @@ namespace bril_ir {
 
     constexpr auto parse_print =
       [](auto &ref){
-	return instruction{{std::string{ref["args"][0]}}, operation::_print};
+	return instructions::print{{std::string{ref["args"][0]}}};
       };
     
     constexpr auto parse_const_int =
       [](auto& ref){
-	return instruction{ref["dest"], operation::_const, type::_int, ref["value"]};
+	return instructions::_const<int>{ref["dest"], ref["value"]};
       };
     
     std::list<instruction> build;

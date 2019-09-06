@@ -8,63 +8,53 @@
 #include "copy_ptr.hpp"
 
 namespace bril_ir{
-
-  struct instruction;
   
-  struct ir_visitor{
-    virtual visit(const instruction&) = 0;
+  enum class operation{
+    _const, _print
   };
   
-enum class operation{
-  _const, _print
-};
-
-enum class type{
-  _int, _bool
-};
-
-union value{
-  int i;
-  bool b;
-};
-
-struct dyn_instruction{
-  const std::optional<std::string> dst;
-  const std::list<std::string> args;
-  const operation op;
-  const std::optional<type> t;
-  const std::optional<int> value;
-
-  instruction(const std::string& dst, operation op, type t, int value )
-    :dst(dst),op(op),t(t),value(value){}
+  enum class type{
+    _int, _bool
+  };
   
-  instruction(const std::list<std::string> &args, operation op)
-    :args(args),op(op){}
+  struct ir_visitor;
   
-  instruction() = default;
-};
-
   struct _instruction{
-    virtual visit(ir_visitor&) = 0;
-  private:
-    ~instruction() = default;
+    virtual void visit(ir_visitor&) const = 0;
+    virtual _instruction* clone() const = 0;
+    virtual ~_instruction() = default;
   };
-
-  using instruction = mutils::copy_ptr<_instruction>;
 
   namespace instructions{
-    
-    struct _const : public _instruction{
-      std::list<std::string> args;
-    };
-    
+#define ___bril_instructions_boilerplate_decl void visit(ir_visitor& v) const; \
+    _instruction* clone() const;
+
     template<typename T>
+    struct _const : public _instruction{
+      const std::string dst;
+      const T value;
+      _const(const _const&) = default;
+      _const(const std::string &dst, const T& value):dst(dst),value(value){}
+
+      ___bril_instructions_boilerplate_decl
+    };    
+
     struct print : public _instruction{
-      std::string dst;
-      T value;
+      const std::list<std::string> args;
+
+      print(const print&) = default;
+      print(const std::list<std::string>& args):args(args){}
+      ___bril_instructions_boilerplate_decl
     };
     
   }
+
+  struct ir_visitor{
+    virtual void visit(const instructions::_const<int>&) = 0;
+    virtual void visit(const instructions::print&) = 0;
+  };
+
+  using instruction = mutils::copy_ptr<_instruction>;
 
 struct program{
   const std::list<instruction> instrs;

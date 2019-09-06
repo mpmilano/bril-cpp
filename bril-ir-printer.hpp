@@ -18,22 +18,36 @@ namespace bril_ir{
     return in;
   }
 
-  std::ostream& operator<<(std::ostream& in, const instruction& i){
-    if (i.dst) in << *i.dst << " = ";
-    in << i.op;
-    if (i.args.size() >= 0 || i.value) {
-      in << "(";
-      bool first = true;
-      for (const auto& arg : i.args){
-	if (!first) in << ",";
-	else first = false;
-	in << arg;
+  std::ostream& operator<<(std::ostream& out, const instruction& i){
+
+    struct visitor : public ir_visitor{
+      std::ostream& out;
+      
+      void visit(const instructions::_const<int>& c){
+	out << c.dst << " = " << "const(" << c.value << " : int)";
       }
-      if (i.value) in << *i.value;
-      in << ")";
-    }
-    if (i.t) in << " : " << *i.t;
-    return in;
+      
+      void visit(const instructions::print& p){
+	out << "print(";
+	bool first = true;
+	for (const auto& arg : p.args){
+	  if (!first) out << ",";
+	  else first = false;
+	  out << arg;
+	}
+	out << ")";
+      }
+      
+      void visit(const instruction& i){
+	i->visit(*this);
+      }
+
+      visitor(std::ostream &out):out(out){}
+      
+    };
+    visitor v{out};
+    v.visit(i);
+    return out;
   }
 
   std::ostream& operator<<(std::ostream& o, const program& p){
