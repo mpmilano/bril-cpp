@@ -30,7 +30,7 @@ namespace bril_ir{
       void visit(const instructions::print& p){
 	out << "print(";
 	bool first = true;
-	for (const auto& arg : p.args){
+	for (const auto& arg : p.args()){
 	  if (!first) out << ",";
 	  else first = false;
 	  out << arg;

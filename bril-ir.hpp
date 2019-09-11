@@ -5,56 +5,58 @@
 #include <list>
 #include <string>
 #include <optional>
+#include <tuple>
 #include "copy_ptr.hpp"
+#include "const_string.hpp"//*/
+#include "bril-ir-types.hpp"
+#include "bril-ir-support.hpp"
 
 namespace bril_ir{
-  
-  enum class operation{
-    _const, _print
-  };
-  
-  enum class type{
-    _int, _bool
-  };
-  
-  struct ir_visitor;
-  
-  struct _instruction{
-    virtual void visit(ir_visitor&) const = 0;
-    virtual _instruction* clone() const = 0;
-    virtual ~_instruction() = default;
-  };
-
   namespace instructions{
-#define ___bril_instructions_boilerplate_decl void visit(ir_visitor& v) const; \
-    _instruction* clone() const;
 
-    template<typename T>
-    struct _const : public _instruction{
-      const std::string dst;
-      const T value;
-      _const(const _const&) = default;
-      _const(const std::string &dst, const T& value):dst(dst),value(value){}
-
-      ___bril_instructions_boilerplate_decl
-    };    
-
-    struct print : public _instruction{
-      const std::list<std::string> args;
-
-      print(const print&) = default;
-      print(const std::list<std::string>& args):args(args){}
-      ___bril_instructions_boilerplate_decl
-    };
+    EFFECT_OP(print, Any);
+  
+  VALUE_OP(add,int, int, int);
+  VALUE_OP(mul,int, int, int);
+  VALUE_OP(sub,int, int, int);
+  VALUE_OP(div,int, int, int);
+  
+  VALUE_OP(eq,bool, int, int);
+  VALUE_OP(lt,bool, int, int);
+  VALUE_OP(gt,bool, int, int);
+  VALUE_OP(le,bool, int, int);
+  VALUE_OP(ge,bool, int, int);
+  
+  VALUE_OP(_not,bool, bool)
+  VALUE_OP(_and,bool, bool, bool)
+  VALUE_OP(_or,bool, bool, bool)
     
   }
 
   struct ir_visitor{
-    virtual void visit(const instructions::_const<int>&) = 0;
-    virtual void visit(const instructions::print&) = 0;
+    VISIT(print);
+
+    VISIT(_const<bool>);
+    VISIT(_const<int>);
+    
+    VISIT(add);
+    VISIT(mul);
+    VISIT(sub);
+    VISIT(div);
+    
+    VISIT(eq);
+    VISIT(lt);
+    VISIT(gt);
+    VISIT(le);
+    VISIT(ge);
+    
+    VISIT(_not)
+    VISIT(_and)
+    VISIT(_or)
+
   };
 
-  using instruction = mutils::copy_ptr<_instruction>;
+
 
 struct program{
   const std::list<instruction> instrs;
