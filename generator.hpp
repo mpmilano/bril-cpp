@@ -1,53 +1,55 @@
 #pragma once
-#include <future>
+#include <mutex>
 #include <utility>
 #include <condition_variable>
 
 namespace mutils {
   template<typename T>
-  struct one_way_channel{
+  struct generator_impl{
 
-    struct transmission_t{
-      T payload;
-      std::future<transmission_t> next;
-    };
-
-    struct notice{
-      std::future<notice> next;
-    };
+      std::unique_ptr<T> payload;
+      std::mutex lock;
+      std::condition_variable ret_ready;
+      bool can_resume = false;
+      std::condition_variable resume_ready;
     
-    struct receiver{
-      using in_t = std::future<transmission_t>;
-      using out_t = std::promise<notice>;
-      in_t in;
-      out_t out;
+      struct receiver{
+	  generator_impl& parent;
+	  using lock_t = std::unique_lock<std::mutex>;
+	  std::unique_ptr<lock_t> lock_p;
+	  
+	  std::unique_ptr<T> output(){
+	      if (!lock_p) lock_p.reset(new lock_t(parent.lock));
+	      if (!payload) {
+		  ready.wait(*lock_p, [&]() -> bool {return payload;});
+	      }
+	      auto ret = std::move(parent.payload);
+	      return ret;
+	  }
+	  
+	  void resume_routine(){
+	      can_resume = true;
+	      lock_p.reset();
+	      resume_ready.notify();
+	  }
+      };
 
-      T recv(){
-	auto&& ret = in.get();
-	in = std::move(ret.next);
-	out_t old_promise;
-	out.swap(old_promise);
-	old_promise.set_value(notice{out.get_future()});
-	return ret.payload;
-      }
-    };
+    struct routine{
+	generator_impl& parent;
+	using lock_t = std::unique_lock<std::mutex>;
+	std::unique_ptr<lock_t> lock_p;
 
-    struct sender{
-      using in_t = std::future<notice>;
-      using out_t = std::promise<transmission_t>;
-      out_t out;
-      in_t in;
+	void set_value(T t){
+	    assert(lock_p);
+	    parent.payload = t;
+	    parent.can_resume = false;
 
-      void send(T t){
-	out_t old_promise;
-	out.swap(old_promise);
-	old_promise.set_value(transmission_t{t,out.get_future()});
-	in = std::move(in.get().next);
-      }
-
-	sender(one_way_channel::receiver& r):in(r.out.get_future()){
-	r.in = out.get_future();
-      }
+	    lock_p.reset();
+	    parent.ret_ready.notify();
+	    
+	    lock_p.reset(new lock_t());
+	    parent.resume_ready.wait([]() -> bool {return parent.can_resume;});
+	}
     };
   };
 
