@@ -42,10 +42,10 @@ namespace mutils {
 	out_t old_promise;
 	out.swap(old_promise);
 	old_promise.set_value(transmission_t{t,out.get_future()});
-	
+	in = std::move(in.get().next);
       }
 
-      sender(one_way_channel::receiver& r){
+	sender(one_way_channel::receiver& r):in(r.out.get_future()){
 	r.in = out.get_future();
       }
     };
