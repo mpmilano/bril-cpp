@@ -46,12 +46,37 @@ namespace mutils {
 
 	    lock_p.reset();
 	    parent.ret_ready.notify();
-	    
+	}
+
+	void resume(){
 	    lock_p.reset(new lock_t());
 	    parent.resume_ready.wait([]() -> bool {return parent.can_resume;});
 	}
     };
   };
+    
+    template<typename T> struct generator;
+    
+    template<typename Ret, typename... Args>
+    struct generator<Ret (Args...)>{
+	std::shared_ptr<generator_impl<Ret> > i{new generator_impl<Ret>{}};
+	struct yielder{
+	    typename generator_impl<Ret>::routine& yield_here;
+	    void operator()(Ret r){
+		yield_here.set_value(r);
+		yield_here.resume();
+	    }
+	};
+	using constructor = std::function<std::function<void (Args...)> (yielder) >;
+	
+	generator(constructor c){
+	    c(yielder{decltype(*i)::routine{*i}})
+	    std::thread t{[generator_impl]{
+			      
+			  }};
+	    
+	}
+    };
 
 
   template<typename T>
@@ -62,15 +87,6 @@ namespace mutils {
     }
     yielder(decltype(send) &send):send(send){}
   };
-
-  template<typename> struct __generate_generator_t;
-
-  template<typename Ret, typename... Args> struct __generate_generator_t<Ret (Args...)>{
-    using type = std::function<std::function<void (Args...)> (yielder<Ret>) >;
-  };
-  
-  template<typename F>
-  using generate_generator_t = typename __generate_generator_t<F>::type;
 
   
   template<typename> struct generator;
